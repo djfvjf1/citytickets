@@ -1,0 +1,309 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>City Tickets</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modal.css' %}">
+    <!-- CSRF helper -->
+    <script src="{% static 'js/csrf.js' %}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+
+    {# 👉 СКРЫТАЯ ФОРМА ДЛЯ СОЗДАНИЯ CSRF COOKIE #}
+    <form style="display:none;" method="post">
+        {% csrf_token %}
+    </form>
+
+    <header>
+        <img src="{% static 'img/logo1.png' %}"
+             onclick="window.location.href = '{% url 'home' %}'"
+             alt="" width="100"
+             style="position:relative; right: 80px; filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);">
+        <div class="navbar">
+            <a href="{% url 'home' %}">Главная</a>
+            <a href="{% url 'events' %}">События</a>
+            {% if user.is_authenticated %}
+                {% if user.is_staff %}
+                    <a href="/xt9a7p_admin_portal_443/">Dashboard</a>
+                    <a href="{% url 'admin-analytics' %}">Аналитика</a>
+                {% else %}
+                    <a href="{% url 'my_tickets' %}">Мои билеты</a>
+                    <a href="{% url 'favorites' %}">Избранное</a>
+                    <a href="{% url 'cart' %}">Корзина</a>
+                    <a href="{% url 'profile' %}">Профиль</a>
+                {% endif %}
+                <a href="{% url 'logout' %}" id="logoutBtn" class="logout">Выйти</a>
+            {% else %}
+                <a href="#" id="openModalBtn">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div id="signupModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div class="signup-box">
+                <div class="signup-header">
+                    <h2>Вход</h2>
+                    <p>Пожалуйста, войдите, используя номер телефона или email</p>
+                </div>
+                <div class="signup-tabs">
+                    <button id="signInTab" class="active-tab" onclick="showForm('signIn')">Sign In</button>
+                    <button id="signUpTab" onclick="showForm('signUp')">Sign Up</button>
+                </div>
+                <div class="signup-form">
+                    <!-- SIGN IN -->
+                    <div id="signInForm" class="form-content active-content">
+                        <input type="text" id="signInIdentifier" placeholder="Телефон или email"/>
+                        <input type="password" id="signInPassword" placeholder="Password"/>
+                        <div id="signInError" style="color:red; font-size:12px; min-height:16px;"></div>
+                        <button class="next-btn" id="signInButton" onclick="signIn()">Sign In</button>
+
+                        <button type="button"
+                                style="margin-top:8px; background:none; border:none; color:#6200ee; font-size:12px; cursor:pointer;"
+                                onclick="window.location.href='{% url 'password_reset' %}'">
+                            Забыли пароль?
+                        </button>
+                    </div>
+                    <!-- SIGN UP -->
+                    <div id="signUpForm" class="form-content">
+                        <input type="text" id="signUpPhone" placeholder="+7 (___) ___-__-__"/>
+                        <input type="email" id="signUpEmail" placeholder="user@gmail.com"/>
+                        <input type="password" id="signUpPassword" placeholder="Password"/>
+                        <div id="signUpMessage" class="form-message"></div>
+                        <button class="next-btn" id="signUpButton" onclick="signUp()">Sign Up</button>
+                    </div>
+                    <button class="halyk-id-btn">Continue with Halyk ID</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main style="flex: 1 0 auto;">
+        {% block container %}
+        {% endblock %}
+    </main>
+
+    <footer style="flex-shrink: 0;">
+        <div class="up-footer">
+            <div class="first-column">
+                <p>City Tickets</p>
+                <p>123 Street</p>
+                <p>City, Country</p>
+                <p>+123 456 7890</p>
+            </div>
+            <div class="second-column">
+                <p>Contact Us</p>
+                <p>Email: info@citytickets.com</p>
+                <p>Follow Us on Social Media</p>
+            </div>
+        </div>
+        <div class="bottom-footer">
+            <h1>City Tickets</h1>
+            <p>©2025</p>
+        </div>
+    </footer>
+
+    <script>
+        // ---------- helpers ----------
+        function setFormMessage(formPrefix, status, message) {
+            const el = document.getElementById(formPrefix + 'Message');
+            if (!el) return;
+            el.textContent = message || '';
+            el.classList.remove('error', 'success');
+            if (status) el.classList.add(status);
+        }
+
+        function clearForm(formPrefix) {
+            const phoneInput = document.getElementById(formPrefix + 'Phone');
+            const passInput = document.getElementById(formPrefix + 'Password');
+            const emailInput = document.getElementById(formPrefix + 'Email');
+
+            if (phoneInput) phoneInput.value = '';
+            if (passInput) passInput.value = '';
+            if (emailInput) emailInput.value = '';
+
+            setFormMessage(formPrefix, null, '');
+        }
+
+        function setButtonLoading(btnId, isLoading) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.disabled = isLoading;
+            btn.style.opacity = isLoading ? '0.7' : '1';
+        }
+
+        // ---------- modal open / close ----------
+        const modal = document.getElementById('signupModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeBtn = document.querySelector('.close-btn');
+
+        if (openModalBtn) {
+            openModalBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                modal.classList.add('active');
+                setFormMessage('signIn', null, '');
+                setFormMessage('signUp', null, '');
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                modal.classList.remove('active');
+            });
+        }
+
+        window.onclick = function (event) {
+            if (event.target === modal) {
+                modal.classList.remove('active');
+            }
+        };
+
+        // ---------- tabs ----------
+        function showForm(form) {
+            document.getElementById('signInForm').classList.remove('active-content');
+            document.getElementById('signUpForm').classList.remove('active-content');
+            document.getElementById('signInTab').classList.remove('active-tab');
+            document.getElementById('signUpTab').classList.remove('active-tab');
+
+            if (form === 'signIn') {
+                document.getElementById('signInForm').classList.add('active-content');
+                document.getElementById('signInTab').classList.add('active-tab');
+            } else {
+                document.getElementById('signUpForm').classList.add('active-content');
+                document.getElementById('signUpTab').classList.add('active-tab');
+            }
+
+            setFormMessage('signIn', null, '');
+            setFormMessage('signUp', null, '');
+        }
+
+        // ---------- sign up ----------
+        function signUp() {
+            const phone_number = document.getElementById('signUpPhone').value;
+            const password = document.getElementById('signUpPassword').value;
+            const email = document.getElementById('signUpEmail').value;
+
+            setFormMessage('signUp', null, '');
+            setButtonLoading('signUpButton', true);
+
+            fetch('{% url "sign-up" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({phone_number, password, email})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        setFormMessage('signUp', 'error', data.message || 'Ошибка регистрации');
+                    } else {
+                        setFormMessage('signUp', 'success', data.message || 'Регистрация прошла успешно');
+                        setTimeout(() => {
+                            clearForm('signUp');
+                            modal.classList.remove('active');
+                            location.reload();
+                        }, 600);
+                    }
+                })
+                .catch(() => {
+                    setFormMessage('signUp', 'error', 'Ошибка сервера. Попробуйте позже.');
+                })
+                .finally(() => {
+                    setButtonLoading('signUpButton', false);
+                });
+        }
+
+        // ---------- sign in ----------
+        function signIn() {
+            const identifier = document.getElementById('signInIdentifier').value;
+            const password = document.getElementById('signInPassword').value;
+            const errorBox = document.getElementById('signInError');
+            errorBox.textContent = '';
+
+            fetch('{% url "sign-in" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({identifier, password})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        errorBox.textContent = data.message;
+                    } else {
+                        document.getElementById('signupModal').classList.remove('active');
+                        location.reload();
+                    }
+                })
+                .catch(() => {
+                    errorBox.textContent = 'Ошибка на сервере, попробуйте позже.';
+                });
+        }
+
+        // ---------- logout ----------
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                fetch('{% url "logout" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                    .then(() => {
+                        location.reload();
+                    })
+                    .catch(() => {
+                        location.reload();
+                    });
+            });
+        }
+
+        // ---------- mask for phone (signUp) ----------
+        function setCursorPosition(pos, elem) {
+            elem.focus();
+            if (elem.setSelectionRange) elem.setSelectionRange(pos, pos);
+            else if (elem.createTextRange) {
+                var range = elem.createTextRange();
+                range.collapse(true);
+                range.moveEnd('character', pos);
+                range.moveStart('character', pos);
+                range.select();
+            }
+        }
+
+        function mask(event) {
+            var matrix = "+7 (___) ___-__-__",
+                i = 0,
+                def = matrix.replace(/\D/g, ""),
+                val = this.value.replace(/\D/g, "");
+            if (def.length >= val.length) val = def;
+            this.value = matrix.replace(/./g, function (a) {
+                return /[_\d]/.test(a) && i < val.length ? val.charAt(i++) : i >= val.length ? "" : a;
+            });
+            if (event.type === "blur") {
+                if (this.value.length === 2) this.value = "";
+            } else setCursorPosition(this.value.length, this);
+        }
+
+        var inputSignUp = document.getElementById("signUpPhone");
+        if (inputSignUp) {
+            inputSignUp.addEventListener("input", mask, false);
+            inputSignUp.addEventListener("focus", mask, false);
+            inputSignUp.addEventListener("blur", mask, false);
+            inputSignUp.addEventListener("keydown", mask, false);
+        }
+    </script>
+</body>
+</html>

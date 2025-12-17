@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block container %}
+<link rel="stylesheet" href="{% static 'css/events.css' %}">
+
+<div class="search-section">
+    <form method="get">
+        <div class="search-bar" style="width: 900px">
+            <input type="text"
+                   name="q"
+                   id="search-input"
+                   placeholder="Поиск событий по названию"
+                   value="{{ search_query }}">
+            <button type="submit" class="filter-button">Filters</button>
+        </div>
+    </form>
+</div>
+
+<div class="card-container" style="width: 60%; margin: 40px auto 120px auto;">
+
+    {% for event in events %}
+        <div class="card">
+            <div class="card-inner">
+
+                {# FRONT #}
+                <div class="card-front">
+                    {% if event.image %}
+                        <img src="{{ event.image.url }}" alt="{{ event.title }}">
+                    {% endif %}
+
+                    {% if event.price %}
+                        <div class="price">от {{ event.price }} ₸</div>
+                    {% endif %}
+
+                    {% if event.age_limit %}
+                        <div class="age">{{ event.age_limit }}+</div>
+                    {% endif %}
+
+                    <h3>{{ event.title }}</h3>
+
+                    <p>
+                        {{ event.datetime_passing|date:"d MMM" }}
+                        {% if event.location %}
+                            • {{ event.location.name }}
+                            {% if event.location.city %}
+                                , {{ event.location.city }}
+                            {% endif %}
+                        {% else %}
+                            • Место проведения уточняется
+                        {% endif %}
+                    </p>
+                </div>
+
+                {# BACK #}
+                <div class="card-back">
+                    <h3>{{ event.title }}</h3>
+                    <p>
+                        {{ event.description|default:"Подробнее о событии, месте и условиях участия."|truncatewords:22 }}
+                    </p>
+
+                    <!-- основная кнопка -->
+                    <button onclick="window.location.href='{% url 'event_details' event.pk %}'">
+                        Купить билет
+                    </button>
+
+                    {% if user.is_authenticated and not user.is_staff %}
+                        <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
+
+                            <!-- В КОРЗИНУ -->
+                            <form method="post"
+                                  action="{% url 'add_to_cart' event.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        style="width:100%; padding:6px 0; border-radius:6px;
+                                               border:none; background:#17a2b8; color:#fff;
+                                               cursor:pointer; font-size:13px;">
+                                    В корзину
+                                </button>
+                            </form>
+
+                            <!-- В ИЗБРАННОЕ / УДАЛИТЬ ИЗ ИЗБРАННОГО -->
+                            <form method="post"
+                                  action="{% url 'toggle_favorite' event.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        style="width:100%; padding:6px 0; border-radius:6px;
+                                               border:1px solid #ff9800; background:#fff;
+                                               color:#ff9800; cursor:pointer; font-size:13px;">
+                                    {% if event.id in favorite_ids %}
+                                        Убрать из избранного
+                                    {% else %}
+                                        В избранное
+                                    {% endif %}
+                                </button>
+                            </form>
+
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    {% empty %}
+        <p class="no-events">
+            Событий не найдено. Попробуйте изменить запрос.
+        </p>
+    {% endfor %}
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const cards = document.querySelectorAll('.card');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        cards.forEach(card => observer.observe(card));
+    });
+</script>
+
+{% endblock %}

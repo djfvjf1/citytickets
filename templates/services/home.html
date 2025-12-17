@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block container %}
+    <div class="container-courses">
+        <div class="categories">
+            <h1 style="color: #eaeaea">
+                CityTickets<br>
+                Все мероприятия города<br>
+                в одном месте
+            </h1>
+            <p style="color: #d0d0d0; margin-top: 15px; max-width: 420px;">
+                Концерты, театр, стендап, спорт, фестивали и мастер-классы.
+                Выбирай событие, дату и место — бронируй билеты онлайн.
+            </p>
+        </div>
+        <div class="categories-video">
+            <img src="{% static 'img/1.jpg' %}">
+        </div>
+    </div>
+
+    <div class="container-cards">
+        <!-- Концерты -->
+        <div class="card1">
+            <img src="{% static 'img/concert.jpg' %}" alt="Концерты">
+            <h1>Концерты</h1>
+            <p>Поп, рок, рэп, джаз и клубные вечеринки на лучших площадках города.</p>
+            <button class="left-diagonal-button"
+                    onclick="window.location.href='{% url 'events' %}?category=concert'">
+                Смотреть события
+            </button>
+        </div>
+
+        <!-- Театр и шоу -->
+        <div class="card2">
+            <img src="{% static 'img/kino.jpg' %}" alt="Театр и шоу">
+            <h1>Театр, Шоу и Кино</h1>
+            <p>Спектакли, мюзиклы, стендап, импровизации, киносеансы и шоу-программы.</p>
+            <button class="right-diagonal-button"
+                    onclick="window.location.href='{% url 'events' %}?category=theatre'">
+                Смотреть события
+            </button>
+        </div>
+
+        <!-- Спорт -->
+        <div class="card3">
+            <img src="{% static 'img/sport.jpg' %}" alt="Спорт">
+            <h1>Спорт</h1>
+            <p>Бои, матчи, турниры и забеги — выбирай событие и бронируй билеты.</p>
+            <button class="right-diagonal-button"
+                    onclick="window.location.href='{% url 'events' %}?category=sport'">
+                Смотреть события
+            </button>
+        </div>
+
+        <!-- Фестивали и другое -->
+        <div class="card4">
+            <img src="{% static 'img/festival.jpg' %}" alt="Фестивали">
+            <h1>Фестивали</h1>
+            <p>Открытые фестивали, ярмарки, лекции и специальные мероприятия.</p>
+            <button class="left-diagonal-button"
+                    onclick="window.location.href='{% url 'events' %}?category=festival'">
+                Смотреть события
+            </button>
+        </div>
+    </div>
+{% endblock %}

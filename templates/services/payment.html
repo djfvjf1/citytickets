@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment{% endblock %}
+
+{% block container %}
+    <style>
+         .payment-container {
+            max-width: 600px;
+            margin: 70px auto 120px auto;
+            padding: 30px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .payment-header {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #17a2b8;
+        }
+
+        /* 👇 Делаем подписи нормального тёмного цвета */
+        .payment-container label {
+            color: #212529;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-control {
+            border-radius: 4px;
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+        .form-control::placeholder {
+            color: #6c757d;
+        }
+
+        .payment-button {
+            background-color: #17a2b8;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .payment-button:hover {
+            background-color: #138f99;
+        }
+
+        .total-price {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #17a2b8;
+        }
+
+        .payment-methods {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .payment-method {
+            display: flex;
+            align-items: center;
+        }
+
+        .payment-method input {
+            margin-right: 10px;
+        }
+
+        .card-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-details input {
+            width: 48%;
+        }
+
+        .card-icons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .card-icons i {
+            font-size: 24px;
+            color: #495057;
+        }
+
+        .field-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+    </style>
+
+    <div class="payment-container">
+        <h2 class="payment-header">Great, that's {{ total_price }} ₸!</h2>
+
+        {# общая ошибка из view, если что-то пошло не так #}
+        {% if error %}
+            <p style="color:#dc3545; text-align:center; margin-bottom:10px;">
+                {{ error }}
+            </p>
+        {% endif %}
+
+        <form id="payment-form" method="post">
+            {% csrf_token %}
+            <div class="payment-methods">
+                <div class="payment-method">
+                    <input type="radio" id="paypal" name="payment_method" value="paypal">
+                    <label for="paypal">PayPal</label>
+                    <i class="fab fa-paypal"></i>
+                </div>
+                <div class="payment-method">
+                    <input type="radio" id="card" name="payment_method" value="card" checked>
+                    <label for="card">Debit/credit card</label>
+                </div>
+            </div>
+
+            <div class="card-icons">
+                <i class="fab fa-cc-visa"></i>
+                <i class="fab fa-cc-mastercard"></i>
+                <i class="fab fa-cc-amex"></i>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.card_number.id_for_label }}">Card number</label>
+                {{ form.card_number }}
+                {% if form.card_number.errors %}
+                    <div class="field-error">{{ form.card_number.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="card-details">
+                <div class="form-group">
+                    <label for="{{ form.expiry_date.id_for_label }}">Expiry</label>
+                    {{ form.expiry_date }}
+                    {% if form.expiry_date.errors %}
+                        <div class="field-error">{{ form.expiry_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.cvv.id_for_label }}">CVC</label>
+                    {{ form.cvv }}
+                    {% if form.cvv.errors %}
+                        <div class="field-error">{{ form.cvv.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="payment-button" id="pay-btn">
+                Finish and pay
+            </button>
+        </form>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('payment-form');
+        const btn = document.getElementById('pay-btn');
+
+        if (!form || !btn) return;
+
+        form.addEventListener('submit', function () {
+            // если уже нажимали — просто не даём второй сабмит
+            if (btn.dataset.locked === '1') {
+                return false;
+            }
+
+            btn.dataset.locked = '1';
+            btn.disabled = true;
+            btn.innerText = 'Processing...';
+        });
+    });
+</script>
+{% endblock %}

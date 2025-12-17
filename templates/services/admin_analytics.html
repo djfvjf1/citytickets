@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Аналитика{% endblock %}
+
+{% block container %}
+<div class="page-card" style="max-width:1100px;">
+  <h2 class="page-title">Аналитика</h2>
+
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:18px;">
+    <div class="page-card" style="margin:0;">
+      <div style="font-size:13px; opacity:.8;">Всего продано билетов</div>
+      <div style="font-size:26px; font-weight:700;">{{ total_tickets }}</div>
+    </div>
+    <div class="page-card" style="margin:0;">
+      <div style="font-size:13px; opacity:.8;">Выручка (всего)</div>
+      <div style="font-size:26px; font-weight:700;">{{ total_revenue }}</div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; align-items:start;">
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">График продаж (за всё время)</h3>
+      <canvas id="salesChart" height="120"></canvas>
+    </div>
+
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Топ 5 событий</h3>
+      <ol style="margin:0; padding-left:18px;">
+        {% for e in top_events %}
+          <li style="margin-bottom:8px;">
+            <div style="font-weight:600;">{{ e.event__title }}</div>
+            <div style="font-size:12px; opacity:.8;">
+              Билетов: {{ e.tickets }} | Выручка: {{ e.revenue }}
+            </div>
+          </li>
+        {% empty %}
+          <div style="opacity:.75;">Пока нет продаж.</div>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px;">
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Продажи по событиям (лидерборд)</h3>
+      <div style="max-height:360px; overflow:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="text-align:left; font-size:13px; opacity:.8;">
+              <th style="padding:8px 6px;">Событие</th>
+              <th style="padding:8px 6px;">Билеты</th>
+              <th style="padding:8px 6px;">Выручка</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in sales_by_event %}
+              <tr style="border-top:1px solid rgba(255,255,255,.08);">
+                <td style="padding:8px 6px;">{{ r.event__title }}</td>
+                <td style="padding:8px 6px;">{{ r.tickets }}</td>
+                <td style="padding:8px 6px;">{{ r.revenue }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" style="padding:10px 6px; opacity:.75;">Нет данных.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Продажи по категориям</h3>
+      <div style="max-height:360px; overflow:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="text-align:left; font-size:13px; opacity:.8;">
+              <th style="padding:8px 6px;">Категория</th>
+              <th style="padding:8px 6px;">Билеты</th>
+              <th style="padding:8px 6px;">Выручка</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in sales_by_category %}
+              <tr style="border-top:1px solid rgba(255,255,255,.08);">
+                <td style="padding:8px 6px;">{{ r.name }}</td>
+                <td style="padding:8px 6px;">{{ r.tickets }}</td>
+                <td style="padding:8px 6px;">{{ r.revenue }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" style="padding:10px 6px; opacity:.75;">Нет данных.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-card" style="margin-top:14px;">
+    <h3 style="margin:0 0 10px 0;">Последние покупки</h3>
+    <div style="max-height:420px; overflow:auto;">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="text-align:left; font-size:13px; opacity:.8;">
+            <th style="padding:8px 6px;">Когда</th>
+            <th style="padding:8px 6px;">Пользователь</th>
+            <th style="padding:8px 6px;">Событие</th>
+            <th style="padding:8px 6px;">Цена</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in recent_purchases %}
+            <tr style="border-top:1px solid rgba(255,255,255,.08);">
+              <td style="padding:8px 6px;">{{ t.created_at }}</td>
+              <td style="padding:8px 6px;">{{ t.user.email }} / {{ t.user.phone_number }}</td>
+              <td style="padding:8px 6px;">{{ t.event.title }}</td>
+              <td style="padding:8px 6px;">{{ t.price }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" style="padding:10px 6px; opacity:.75;">Покупок ещё нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = {{ chart_labels|safe }};
+  const revenue = {{ chart_revenue|safe }};
+  const tickets = {{ chart_tickets|safe }};
+
+  const ctx = document.getElementById('salesChart');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Выручка', data: revenue, yAxisID: 'y' },
+        { label: 'Билеты', data: tickets, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: { type: 'linear', position: 'left' },
+        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+</script>
+{% endblock %}

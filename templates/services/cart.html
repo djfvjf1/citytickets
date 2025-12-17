@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block container %}
+<div class="page-card">
+    <h2 class="page-title">Корзина</h2>
+
+    {% if items %}
+        <table class="cart-table">
+            <thead>
+            <tr>
+                <th>Событие</th>
+                <th>Дата</th>
+                <th>Количество</th>
+                <th>Цена</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in items %}
+                <tr>
+                    <td>
+                        <a href="{% url 'event_details' item.event.id %}">
+                            {{ item.event.title }}
+                        </a>
+                    </td>
+                    <td>{{ item.event.datetime_passing|date:"d.m.Y H:i" }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.event.price|floatformat:2 }} ₸</td>
+                    <td>
+                        <form method="post" action="{% url 'cart_remove' item.id %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    style="font-size:12px; border:none; background:none;
+                                           color:#dc3545; cursor:pointer;">
+                                Удалить
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="text-align:right; margin-top:15px;">
+            <strong>Итого:</strong> {{ total_price|floatformat:2 }} ₸
+        </div>
+
+        <p style="margin-top:10px; font-size:12px; color:#555;">
+            * Сейчас оплата у нас по одному событию за раз, поэтому покупка идёт через кнопку
+            «Купить билет» на карточке события.
+        </p>
+    {% else %}
+        <p class="empty-state">Корзина пуста.</p>
+    {% endif %}
+</div>
+{% endblock %}

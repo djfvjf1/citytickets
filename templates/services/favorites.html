@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Избранное{% endblock %}
+
+{% block container %}
+<div class="page-card">
+    <h2 class="page-title">Избранные события</h2>
+
+    {% if favorites %}
+        <div class="items-grid">
+            {% for fav in favorites %}
+                {% with event=fav.event %}
+                    <div class="item-card">
+                        <h3>{{ event.title }}</h3>
+
+                        <p class="item-meta">
+                            <strong>Дата:</strong>
+                            {{ event.datetime_passing|date:"d.m.Y H:i" }}
+                        </p>
+
+                        <p class="item-meta">
+                            <strong>Место:</strong>
+                            {% if event.location %}
+                                {{ event.location.name }}
+                            {% else %}
+                                Место уточняется
+                            {% endif %}
+                        </p>
+
+                        <p class="item-meta">
+                            <strong>Цена от:</strong> {{ event.price }} ₸
+                        </p>
+
+                        <div class="item-actions">
+                            <a href="{% url 'event_details' event.id %}">Подробнее</a>
+                            <a href="{% url 'payment' %}?event={{ event.id }}">Купить билет</a>
+                        </div>
+
+                        <form method="post"
+                              action="{% url 'toggle_favorite' event.id %}"
+                              style="margin-top:8px; text-align:center;">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    style="font-size:12px; border:none; background:none;
+                                           color:#dc3545; cursor:pointer;">
+                                Удалить из избранного
+                            </button>
+                        </form>
+                    </div>
+                {% endwith %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">У вас пока нет избранных событий.</p>
+    {% endif %}
+</div>
+{% endblock %}

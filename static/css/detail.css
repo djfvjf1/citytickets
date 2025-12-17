@@ -1,0 +1,260 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+.container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.content {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.content img {
+    max-width: 400px;
+    height: 560px;
+    border-radius: 10px;
+}
+
+.content div {
+    width: calc(100% - 100px);
+    padding-left: 20px;
+}
+
+.content h1 {
+    font-size: 36px;
+    color: #000000;
+}
+
+.description {
+    margin-top: 10px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #666666;
+}
+
+.details {
+    display: flex;
+    margin-top: 100px;
+    font-size: 14px;
+    color: #666666;
+}
+
+.details div {
+    width: 48%;
+}
+
+.buy-button {
+    background-color: #ff6600;
+    color: #fff;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    display: inline-block;
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+}
+
+.buy-button:hover {
+    background-color: #e65c00;
+}
+
+h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+thead th {
+    font-size: 1em;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #e0e0e0;
+    color: #333333;
+}
+
+tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: center;
+    color: #666666;
+}
+
+.date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.date .day {
+    font-size: 2em;
+    font-weight: bold;
+    color: #333333;
+}
+
+.date .month,
+.date .day-of-week {
+    font-size: 0.8em;
+    color: #888888;
+}
+
+.time-ticket {
+    background-color: #ff6600;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.time-ticket .time {
+    font-size: 1em;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content-ticket {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 10px;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    float: right;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.confirm-button {
+    background-color: #e9844c;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    display: inline-block;
+    text-align: center;
+    font-size: 18px;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+.confirm-button:hover {
+    background-color: #c65625;
+}
+
+.hall-layout {
+    display: grid;
+    grid-template-columns: repeat(25, 1fr);
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.row {
+    display: contents;
+}
+
+.row-label {
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.seat {
+    width: 30px;
+    height: 30px;
+    background-color: #ddd;
+    border: 1px solid #999;
+    border-radius: 50%;
+    cursor: pointer;
+    text-align: center;
+    line-height: 30px;
+}
+
+.seat.occupied {
+    background-color: #ff4b5c;
+    cursor: not-allowed;
+}
+
+.seat.selected {
+    background-color: #76c7c0;
+    cursor: not-allowed;
+}
+
+.seat:hover:not(.occupied):not(.selected) {
+    background-color: #76c7c0;
+}
+
+.seat-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ticket {
+    display: flex;
+    flex-direction: column; /* Stack content vertically */
+    justify-content: center;
+    align-items: flex-start; /* Align text to the left */
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    width: 200px; /* Ensure tickets fit the container width */
+    box-sizing: border-box; /* Include padding and border in the width calculation */
+    word-wrap: break-word; /* Break long words if necessary */
+    margin-bottom: 10px; /* Add spacing between tickets */
+    padding: 10px; /* Add padding for better visual appearance */
+}
+
+.ticket p {
+    margin: 0;
+    left: 0;
+    width: 100%;
+}
+
+.ticket-summary {
+    margin-top: 20px;
+    font-weight: bold;
+}

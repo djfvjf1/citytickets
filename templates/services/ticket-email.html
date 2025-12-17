@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Confirmation</title>
+</head>
+<body>
+<h2>Ticket Confirmation</h2>
+
+<p>Dear {{ user.email|default:user.phone_number }},</p>
+
+<p>
+    Ticket ID: {{ tickets.0.id }}<br>
+    {% if purchase_time %}
+        Purchase time: {{ purchase_time }}
+    {% endif %}
+</p>
+
+<p>Thank you for your purchase. Here are your ticket details:</p>
+
+<ul>
+    {% for ticket in tickets %}
+        <li style="margin-bottom:20px;">
+            <strong>Event:</strong> {{ ticket.event.title }}<br>
+
+            <strong>Date:</strong>
+            {{ ticket.event.datetime_passing|date:"Y-m-d" }}<br>
+
+            <strong>Time:</strong>
+            {{ ticket.event.datetime_passing|date:"H:i" }}<br>
+
+            {% if ticket.event.location %}
+                <strong>Location:</strong>
+                {{ ticket.event.location.name }}
+                {% if ticket.event.location.city %}, {{ ticket.event.location.city }}{% endif %}
+                {% if ticket.event.location.address %}, {{ ticket.event.location.address }}{% endif %}
+                <br>
+            {% endif %}
+
+            <strong>Price:</strong> {{ ticket.price }} ₸<br>
+
+            {% if ticket.qr_code %}
+                <img src="{{ ticket.qr_code.url }}" alt="QR Code"
+                     style="max-width:120px; margin-top:10px;">
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
+
+<p>Please show your QR code at the entrance.</p>
+<p>Enjoy the event!</p>
+</body>
+</html>

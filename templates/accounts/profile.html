@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Профиль{% endblock %}
+
+{% block container %}
+<div class="page-card" style="max-width:540px;">
+    <h2 class="page-title">Мой профиль</h2>
+
+    {# --- уведомления --- #}
+    {% if messages %}
+        <div style="margin-bottom:12px; text-align:left;">
+            {% for message in messages %}
+                <div style="
+                    padding:10px 12px;
+                    border-radius:10px;
+                    margin-bottom:8px;
+                    font-size:14px;
+                    {% if message.tags == 'error' %}
+                        background: rgba(220, 20, 60, 0.10);
+                        color: crimson;
+                        border: 1px solid rgba(220, 20, 60, 0.25);
+                    {% else %}
+                        background: rgba(0, 128, 0, 0.10);
+                        color: green;
+                        border: 1px solid rgba(0, 128, 0, 0.25);
+                    {% endif %}
+                ">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if saved %}
+        <div style="
+            padding:10px 12px;
+            border-radius:10px;
+            margin-bottom:12px;
+            font-size:14px;
+            background: rgba(0, 128, 0, 0.10);
+            color: green;
+            border: 1px solid rgba(0, 128, 0, 0.25);
+            text-align:left;
+        ">
+            Данные сохранены.
+        </div>
+    {% endif %}
+
+    {# --- блок управления редактированием --- #}
+    {% if not edit_verified %}
+        <div style="margin-bottom:12px; text-align:left;">
+            <form method="post" style="margin-bottom:10px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send_code">
+                <button type="submit" style="width:100%;">
+                    ✏️ Редактировать (получить код на почту)
+                </button>
+            </form>
+
+            {% if code_sent %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="verify_code">
+
+                    <label style="display:block; font-size:13px; margin-bottom:6px;">
+                        Код из письма
+                    </label>
+                    <input
+                        type="text"
+                        name="code"
+                        maxlength="6"
+                        inputmode="numeric"
+                        placeholder="000000"
+                        required
+                        style="margin-bottom:10px;"
+                    >
+
+                    <button type="submit" style="width:100%;">
+                        ✅ Подтвердить код
+                    </button>
+
+                    <div style="font-size:12px; opacity:.75; margin-top:8px;">
+                        Если письмо не пришло — проверь “Спам” или нажми “Редактировать” ещё раз.
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    {% else %}
+        <div style="
+            padding:10px 12px;
+            border-radius:10px;
+            margin-bottom:12px;
+            font-size:14px;
+            background: rgba(0, 170, 255, 0.10);
+            border: 1px solid rgba(0, 170, 255, 0.25);
+            text-align:left;
+        ">
+            ✅ Подтверждено. Можно редактировать профиль.
+        </div>
+    {% endif %}
+
+    {# --- форма профиля --- #}
+    <form method="post" class="profile-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save">
+
+        <div>
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+        </div>
+
+        <div>
+            <label for="{{ form.phone_number.id_for_label }}">Телефон</label>
+            {{ form.phone_number }}
+        </div>
+
+        <button
+            type="submit"
+            style="width:100%; {% if not edit_verified %}opacity:.55; cursor:not-allowed;{% endif %}"
+            {% if not edit_verified %}disabled{% endif %}
+        >
+            Сохранить
+        </button>
+    </form>
+
+    {% if not edit_verified %}
+        <div style="margin-top:10px; font-size:12px; opacity:.75; text-align:left;">
+            🔒 Чтобы изменить данные, нужно подтвердить кодом из письма.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

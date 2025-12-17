@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+
+{% block branding %}
+    <h1 id="site-name" style="display:flex; align-items:center; gap:15px;">
+        <a href="{% url 'admin:index' %}"
+           style="color:white; text-decoration:none;">
+            CityTickets — Admin
+        </a>
+
+        <a href="{% url 'home' %}"
+           target="_blank"
+           style="color:#ffeb3b; font-size:14px; text-decoration:none;">
+            ← На сайт
+        </a>
+    </h1>
+{% endblock %}

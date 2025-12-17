@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block container %}
+
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+
+<div class="container"
+     style="width: 80%; background-color: #f0f0f0; padding: 30px; margin-bottom: 20px; border-radius: 15px">
+    <div class="content">
+        {# Картинка события #}
+        {% if event.image %}
+            <img src="{{ event.image.url }}" alt="{{ event.title }}">
+        {% else %}
+            <img src="{% static 'img/placeholder-event.jpg' %}" alt="{{ event.title }}">
+        {% endif %}
+
+        <div style="display: flex;">
+            <div style="width: 100%;">
+                <h1 style="padding-left: 15px;">{{ event.title }}</h1>
+
+                <p style="padding-left: 20px; margin-top: 40px;">Описание</p>
+                <div class="description">
+                    {{ event.description }}
+                </div>
+
+                {% if user.is_authenticated %}
+                    <a href="{% url 'payment' %}?event={{ event.id }}"
+                       class="buy-button"
+                       style="margin-left: 15px;">
+                        Купить билет
+                    </a>
+                {% else %}
+                    <p style="color: red; position: relative; top: 50px; left: 25px;">
+                        Чтобы купить билет, нужно войти в аккаунт.
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="details">
+                <div>
+                    <p>
+                        <strong>Место проведения:<br><br></strong>
+                        {% if event.location %}
+                            {{ event.location.name }}<br>
+                            {% if event.location.city %}
+                                г. {{ event.location.city }}<br>
+                            {% endif %}
+                            {% if event.location.address %}
+                                {{ event.location.address }}
+                            {% endif %}
+                        {% else %}
+                            Место проведения уточняется
+                        {% endif %}
+                    </p>
+
+                    <p>
+                        <strong>Дата и время:<br><br></strong>
+                        {{ event.datetime_passing|date:"d.m.Y" }} в
+                        {{ event.datetime_passing|date:"H:i" }}
+                    </p>
+
+                    {% if event.theater_director %}
+                        <p>
+                            <strong>Организатор / режиссёр:<br><br></strong>
+                            {{ event.theater_director }}
+                        </p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <p><strong>Возрастное ограничение:</strong></p>
+                    <div style="width: 40px; height: 40px; border-radius: 50%;
+                                background-color:#e65c00; display: flex;
+                                justify-content: center; align-items: center;">
+                        <span style="color: white; font-weight: bold;">
+                            {{ event.age_limit }}+
+                        </span>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        <strong>Продолжительность:</strong>
+                        {{ event.duration }} мин.
+                    </p>
+
+                    <p style="margin-top: 10px;">
+                        <strong>Цена билета от:</strong>
+                        {{ event.price }} ₸
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="schedule-container" style="margin-top: 30px;">
+        <div style="display: flex; justify-content: center;">
+            <h1>РАСПИСАНИЕ</h1>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Место</th>
+                <th>Цена от</th>
+                <th>Время</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    <div class="date">
+                        <span class="day">{{ event.datetime_passing|date:"d" }}</span>
+                        <span class="month">{{ event.datetime_passing|date:"F" }}</span>
+                        <span class="day-of-week">{{ event.datetime_passing|date:"D" }}</span>
+                    </div>
+                </td>
+                <td>
+                    {% if event.location %}
+                        {{ event.location.name }}
+                    {% else %}
+                        Место уточняется
+                    {% endif %}
+                </td>
+                <td>от {{ event.price }} ₸</td>
+                <td>
+                    <div class="time-ticket">
+                        <span class="time">
+                            {{ event.datetime_passing|date:"H:i" }}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
