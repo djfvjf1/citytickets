@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Проверка билета{% endblock %}
+
+{% block container %}
+<div class="page-card" style="max-width:650px; margin:18px auto; text-align:center;">
+  <h2 style="margin:0 0 10px;">Проверка билета</h2>
+
+  {% if valid %}
+    <div style="color:#1b8f2f; font-size:22px; font-weight:800; margin:10px 0;">
+      ✅ Билет действителен
+    </div>
+  {% else %}
+    <div style="color:#b00020; font-size:22px; font-weight:800; margin:10px 0;">
+      ❌ Билет недействителен
+    </div>
+  {% endif %}
+
+  <div style="opacity:.85; margin-top:8px;">
+    <div><b>Событие:</b> {{ ticket.event.title }}</div>
+    <div><b>Дата и время:</b> {{ ticket.event.datetime_passing }}</div>
+    <div><b>Цена:</b> {{ ticket.price }} ₸</div>
+    <div><b>Статус:</b> {{ ticket.get_status_display }}</div>
+  </div>
+
+  <hr style="margin:14px 0; opacity:.2;">
+
+  {% if can_mark_used %}
+    <div style="font-size:13px; opacity:.8; margin-bottom:10px;">
+      Вы вошли как админ/персонал — можно отметить билет как использованный.
+    </div>
+
+    <form method="post" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit"
+              style="padding:8px 14px; border-radius:8px; border:none;
+                     background:#17a2b8; color:#fff; cursor:pointer; font-weight:600;">
+        Отметить как использованный
+      </button>
+    </form>
+  {% else %}
+    <div style="font-size:13px; opacity:.75;">
+      Для отметки “использован” требуется вход админа.
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

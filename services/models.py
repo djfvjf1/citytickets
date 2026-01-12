@@ -1,8 +1,10 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 
 from accounts.models import User
 from services.utils import generate_qr_code
+from django.conf import settings 
 
 
 class Location(models.Model):
@@ -58,16 +60,36 @@ class Event(models.Model):
         verbose_name='Тип события'
     )
 
+    is_cancelled = models.BooleanField(default=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    def cancel(self):
+        self.is_cancelled = True
+        self.cancelled_at = timezone.now()
+        self.save(update_fields=['is_cancelled', 'cancelled_at'])
+
     def __str__(self):
         return self.title
 
 # здесь находится генерация
 class Ticket(models.Model):
+    STATUS_CHOICES = [
+        ('paid', 'Оплачен'),
+        ('refreq', 'Запрошен возврат'),
+        ('refunded', 'Возвращён'),
+        ('cancelled', 'Отменён'),
+        ('used', 'Использован'),
+    ]
+
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     price = models.IntegerField()
     qr_code = models.ImageField(upload_to='qr_codes', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='paid')
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Билет'
@@ -88,16 +110,13 @@ class Ticket(models.Model):
         super().save(*args, **kwargs)
 
         # только для новых билетов и только если ещё нет qr_code
+        
         if is_new and not self.qr_code:
-            img = generate_qr_code(
-                f'Ticket for {self.event.title} | User: {self.user_id}'
-            )
+            verify_url = f"{settings.SITE_URL}/tickets/verify/{self.pk}/"
+            img = generate_qr_code(verify_url)
             filename = f'qr_ticket_{self.pk}.png'
 
-            # прикрепляем файл к полю, но без рекурсивного save
             self.qr_code.save(filename, img, save=False)
-
-            # второй save — уже UPDATE, без force_insert
             super(Ticket, self).save(update_fields=['qr_code'])
 
 

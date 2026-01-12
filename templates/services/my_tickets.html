@@ -3,150 +3,185 @@
 {% block title %}Мои билеты{% endblock %}
 
 {% block container %}
-    <style>
-        .ticket-container {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 400px;
-        }
+<style>
+  .ticket-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 300px;
+  }
+  .ticket-card {
+    background: #fff;
+    border: 1px solid #17a2b8;
+    border-radius: 15px;
+    margin: 20px;
+    max-width: 350px;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  .ticket-header {
+    background: #17a2b8;
+    color: #fff;
+    padding: 10px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+  .ticket-body {
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .ticket-info { margin-bottom: 10px; }
+  .ticket-info strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #17a2b8;
+  }
+  .ticket-footer {
+    background: #f8f9fa;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .ticket-footer img { max-width: 110px; }
+  .ticket-cutout {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border: 1px solid #17a2b8;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .ticket-cutout.left { left: -10px; }
+  .ticket-cutout.right { right: -10px; }
+  .ticket-dashed-line {
+    border-top: 2px dashed #17a2b8;
+    margin: 12px 0;
+  }
+  .btn-refund {
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #dc3545;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-pdf {
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 6px;
+    background: #17a2b8;
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .muted { opacity: .75; font-size: 13px; }
+  .bad { color: #b00020; font-size: 13px; margin-top: 8px; }
+  .ok { color: #1a7f37; font-size: 13px; margin-top: 8px; }
+</style>
 
-        .ticket-card {
-            background: #fff;
-            border: 1px solid #17a2b8;
-            border-radius: 15px;
-            margin: 20px;
-            max-width: 350px;
-            width: 100%;
-            overflow: hidden;
-            position: relative;
-        }
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Мои билеты</h2>
 
-        .ticket-header {
-            background: #17a2b8;
-            color: #fff;
-            padding: 10px;
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-
-        .ticket-body {
-            padding: 20px;
-            text-align: center;
-            position: relative;
-        }
-
-        .ticket-info {
-            margin-bottom: 10px;
-        }
-
-        .ticket-info strong {
-            display: block;
-            margin-bottom: 5px;
-            color: #17a2b8;
-        }
-
-        .ticket-footer {
-            background: #f8f9fa;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .ticket-footer img {
-            max-width: 100px;
-        }
-
-        .ticket-cutout {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #fff;
-            border: 1px solid #17a2b8;
-            border-radius: 50%;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .ticket-cutout.left {
-            left: -10px;
-        }
-
-        .ticket-cutout.right {
-            right: -10px;
-        }
-
-        .ticket-dashed-line {
-            border-top: 2px dashed #17a2b8;
-            margin: 10px 0;
-        }
-    </style>
-
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">Мои билеты</h2>
-
-        {% if tickets %}
-            <div class="ticket-container">
-                {% for ticket in tickets %}
-                    <div class="ticket-card">
-                        <div class="ticket-cutout left"></div>
-                        <div class="ticket-cutout right"></div>
-
-                        <div class="ticket-header">
-                            {{ ticket.event.title }}
-                        </div>
-
-                        <div class="ticket-body">
-                            <div class="ticket-info">
-                                <strong>Дата:</strong>
-                                {{ ticket.event.datetime_passing|date:"d.m.Y" }}
-                            </div>
-
-                            <div class="ticket-info">
-                                <strong>Время:</strong>
-                                {{ ticket.event.datetime_passing|date:"H:i" }}
-                            </div>
-
-                            <div class="ticket-info">
-                                <strong>Место:</strong>
-                                {% if ticket.event.location %}
-                                    {{ ticket.event.location.name }}
-                                    {% if ticket.event.location.city %}
-                                        , {{ ticket.event.location.city }}
-                                    {% endif %}
-                                {% else %}
-                                    Место проведения уточняется
-                                {% endif %}
-                            </div>
-
-                            <div class="ticket-info">
-                                <strong>Цена:</strong>
-                                {{ ticket.price }} ₸
-                            </div>
-
-                            <div class="ticket-dashed-line"></div>
-
-                            <div class="ticket-footer">
-                                {% if ticket.qr_code %}
-                                    <img src="{{ ticket.qr_code.url }}" alt="QR Code">
-                                {% else %}
-                                    <p>QR-код пока не сформирован</p>
-                                {% endif %}
-
-                                <div style="margin-top:10px;">
-                                    <a href="{% url 'ticket_pdf' ticket.id %}"
-                                       style="display:inline-block; padding:6px 12px; border-radius:6px;
-                                              background:#17a2b8; color:#fff; text-decoration:none; font-size:13px;">
-                                        Скачать PDF
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <p class="text-center">У вас пока нет купленных билетов.</p>
-        {% endif %}
+  {% if messages %}
+    <div style="max-width:720px; margin:0 auto 14px auto;">
+      {% for message in messages %}
+        <div style="padding:10px 12px; border-radius:10px; margin-bottom:8px;
+                    background: rgba(23,162,184,.12);">
+          {{ message }}
+        </div>
+      {% endfor %}
     </div>
+  {% endif %}
+
+  {% if tickets %}
+    <div class="ticket-container">
+      {% for ticket in tickets %}
+        <div class="ticket-card">
+          <div class="ticket-cutout left"></div>
+          <div class="ticket-cutout right"></div>
+
+          <div class="ticket-header">
+            {{ ticket.event.title }}
+          </div>
+
+          <div class="ticket-body">
+            <div class="ticket-info">
+              <strong>Дата:</strong>
+              {{ ticket.event.datetime_passing|date:"d.m.Y" }}
+            </div>
+
+            <div class="ticket-info">
+              <strong>Время:</strong>
+              {{ ticket.event.datetime_passing|date:"H:i" }}
+            </div>
+
+            <div class="ticket-info">
+              <strong>Место:</strong>
+              {% if ticket.event.location %}
+                {{ ticket.event.location.name }}
+                {% if ticket.event.location.city %}
+                  , {{ ticket.event.location.city }}
+                {% endif %}
+              {% else %}
+                Место проведения уточняется
+              {% endif %}
+            </div>
+
+            <div class="ticket-info">
+              <strong>Цена:</strong>
+              {{ ticket.price }} ₸
+            </div>
+
+            <div style="margin-top:10px; font-size:13px;">
+              <strong>Статус:</strong> {{ ticket.get_status_display }}
+            </div>
+
+            {# ----- Refund block ----- #}
+            <div style="margin-top:10px;">
+              {% if ticket.status == 'refunded' %}
+                <div class="ok">Возврат выполнен ✅</div>
+
+              {% elif ticket.can_refund %}
+                <form method="post" action="{% url 'refund_now' ticket.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-refund">
+                    Вернуть билет ({{ ticket.price }} ₸)
+                  </button>
+                </form>
+
+              {% else %}
+                {% if ticket.refund_reason %}
+                  <div class="bad">{{ ticket.refund_reason }}</div>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <div class="ticket-dashed-line"></div>
+
+            <div class="ticket-footer">
+              {% if ticket.qr_code %}
+                <img src="{{ ticket.qr_code.url }}" alt="QR Code">
+              {% else %}
+                <p class="muted">QR-код пока не сформирован</p>
+              {% endif %}
+
+              <div style="margin-top:10px;">
+                <a class="btn-pdf" href="{% url 'ticket_pdf' ticket.id %}">
+                  Скачать PDF
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-center">У вас пока нет купленных билетов.</p>
+  {% endif %}
+</div>
 {% endblock %}

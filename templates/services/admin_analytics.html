@@ -5,20 +5,116 @@
 <div class="page-card" style="max-width:1100px;">
   <h2 class="page-title">Аналитика</h2>
 
-  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:18px;">
-    <div class="page-card" style="margin:0;">
-      <div style="font-size:13px; opacity:.8;">Всего продано билетов</div>
-      <div style="font-size:26px; font-weight:700;">{{ total_tickets }}</div>
-    </div>
-    <div class="page-card" style="margin:0;">
-      <div style="font-size:13px; opacity:.8;">Выручка (всего)</div>
-      <div style="font-size:26px; font-weight:700;">{{ total_revenue }}</div>
+  <!-- TOP BAR: period switch + mode + export -->
+  <div style="display:flex; gap:8px; margin:10px 0 14px 0; flex-wrap:wrap; align-items:center;">
+
+    <!-- PERIOD -->
+    <a class="btn" href="?period=all&mode={{ mode }}" style="{% if period == 'all' %}opacity:1;{% else %}opacity:.7;{% endif %}">All</a>
+    <a class="btn" href="?period=7&mode={{ mode }}" style="{% if period == '7' %}opacity:1;{% else %}opacity:.7;{% endif %}">7d</a>
+    <a class="btn" href="?period=30&mode={{ mode }}" style="{% if period == '30' %}opacity:1;{% else %}opacity:.7;{% endif %}">30d</a>
+    <a class="btn" href="?period=90&mode={{ mode }}" style="{% if period == '90' %}opacity:1;{% else %}opacity:.7;{% endif %}">90d</a>
+
+    <!-- MODE -->
+    <span style="width:10px;"></span>
+    <a class="btn" href="?period={{ period }}&mode=gross" style="{% if mode == 'gross' %}opacity:1;{% else %}opacity:.7;{% endif %}">Gross</a>
+    <a class="btn" href="?period={{ period }}&mode=net" style="{% if mode == 'net' %}opacity:1;{% else %}opacity:.7;{% endif %}">Net (без возвратов)</a>
+
+    <div style="margin-left:auto; display:flex; gap:8px;">
+      <a class="btn" href="{% url 'admin_analytics_export_csv' %}?period={{ period }}&mode={{ mode }}">Export CSV</a>
     </div>
   </div>
 
+  <div style="font-size:12px; opacity:.7; margin-bottom:10px;">
+    Режим: <b>{% if mode == 'net' %}Net (только paid){% else %}Gross (всё){% endif %}</b>
+  </div>
+
+  <!-- KPI CARDS + growth -->
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-bottom:18px;">
+    <div class="page-card" style="margin:0;">
+      <div style="font-size:13px; opacity:.8;">Всего продано билетов</div>
+      <div style="display:flex; align-items:baseline; gap:10px;">
+        <div style="font-size:26px; font-weight:700;">{{ total_tickets }}</div>
+        <div style="font-size:12px; opacity:.75;">
+          {% if growth.tickets_pct != None %}Δ {{ growth.tickets_pct }}%{% endif %}
+        </div>
+      </div>
+      <div style="font-size:11px; opacity:.6; margin-top:2px;">
+        Период: {% if period == 'all' %}всё время{% else %}{{ period }} дней{% endif %}
+      </div>
+    </div>
+
+    <div class="page-card" style="margin:0;">
+      <div style="font-size:13px; opacity:.8;">Выручка (всего)</div>
+      <div style="display:flex; align-items:baseline; gap:10px;">
+        <div style="font-size:26px; font-weight:700;">{{ total_revenue }}</div>
+        <div style="font-size:12px; opacity:.75;">
+          {% if growth.revenue_pct != None %}Δ {{ growth.revenue_pct }}%{% endif %}
+        </div>
+      </div>
+      <div style="font-size:11px; opacity:.6; margin-top:2px;">
+        ARPPU: {{ funnel.arppu }} | avg ticket: {{ funnel.avg_ticket_price }}
+      </div>
+    </div>
+  </div>
+
+  <!-- FUNNEL + QUALITY -->
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Воронка и метрики</h3>
+      <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Пользователи</div>
+          <div style="font-size:22px; font-weight:700;">{{ funnel.total_users }}</div>
+        </div>
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Покупатели</div>
+          <div style="font-size:22px; font-weight:700;">{{ funnel.buyers }}</div>
+        </div>
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Повторные</div>
+          <div style="font-size:22px; font-weight:700;">{{ funnel.repeat_buyers }}</div>
+          <div style="font-size:12px; opacity:.8;">{{ funnel.repeat_rate }}%</div>
+        </div>
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Средний чек</div>
+          <div style="font-size:22px; font-weight:700;">{{ funnel.avg_ticket_price }}</div>
+          <div style="font-size:12px; opacity:.8;">ARPPU: {{ funnel.arppu }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Качество продаж</h3>
+      <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px;">
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Возвраты</div>
+          <div style="font-size:22px; font-weight:700;">{{ quality.refunded_count }}</div>
+          <div style="font-size:12px; opacity:.8;">{{ quality.refund_rate }}%</div>
+        </div>
+        <div class="page-card" style="margin:0;">
+          <div style="font-size:13px; opacity:.8;">Использовано</div>
+          <div style="font-size:22px; font-weight:700;">{{ quality.used_count }}</div>
+          <div style="font-size:12px; opacity:.8;">{{ quality.used_rate }}%</div>
+        </div>
+      </div>
+
+      {% if refunds_by_event %}
+        <div style="margin-top:12px; font-size:13px; opacity:.9; font-weight:600;">Топ событий по возвратам</div>
+        <ol style="margin:8px 0 0 0; padding-left:18px;">
+          {% for r in refunds_by_event %}
+            <li style="margin-bottom:6px;">
+              <b>{{ r.event__title }}</b> — {{ r.refunds }}
+            </li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- CHART + TOP EVENTS -->
   <div style="display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; align-items:start;">
     <div class="page-card" style="margin:0;">
-      <h3 style="margin:0 0 10px 0;">График продаж (за всё время)</h3>
+      <h3 style="margin:0 0 10px 0;">График продаж (за период)</h3>
       <canvas id="salesChart" height="120"></canvas>
     </div>
 
@@ -39,6 +135,83 @@
     </div>
   </div>
 
+  <!-- ABC ANALYSIS -->
+  <div class="page-card" style="margin-top:14px;">
+    <h3 style="margin:0 0 10px 0;">ABC-анализ событий (по выручке)</h3>
+
+    <div style="display:flex; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+      <div class="page-card" style="margin:0; padding:10px 12px;">
+        <div style="font-size:12px; opacity:.8;">A</div>
+        <div style="font-size:18px; font-weight:700;">{{ abc_summary.A }}</div>
+      </div>
+      <div class="page-card" style="margin:0; padding:10px 12px;">
+        <div style="font-size:12px; opacity:.8;">B</div>
+        <div style="font-size:18px; font-weight:700;">{{ abc_summary.B }}</div>
+      </div>
+      <div class="page-card" style="margin:0; padding:10px 12px;">
+        <div style="font-size:12px; opacity:.8;">C</div>
+        <div style="font-size:18px; font-weight:700;">{{ abc_summary.C }}</div>
+      </div>
+    </div>
+
+    <div style="max-height:360px; overflow:auto;">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="text-align:left; font-size:13px; opacity:.8;">
+            <th style="padding:8px 6px;">Событие</th>
+            <th style="padding:8px 6px;">Билеты</th>
+            <th style="padding:8px 6px;">Выручка</th>
+            <th style="padding:8px 6px;">ABC</th>
+            <th style="padding:8px 6px;">Накопл. %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in abc_rows %}
+            <tr style="border-top:1px solid rgba(255,255,255,.08);">
+              <td style="padding:8px 6px;">{{ r.event__title }}</td>
+              <td style="padding:8px 6px;">{{ r.tickets }}</td>
+              <td style="padding:8px 6px;">{{ r.revenue }}</td>
+              <td style="padding:8px 6px;"><b>{{ r.abc }}</b></td>
+              <td style="padding:8px 6px;">{{ r.cum_share }}%</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" style="padding:10px 6px; opacity:.75;">Нет данных.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px;">
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Будущие события без продаж</h3>
+      <ol style="margin:0; padding-left:18px;">
+        {% for e in upcoming_no_sales %}
+          <li style="margin-bottom:6px;">
+            <b>{{ e.title }}</b> — {{ e.datetime_passing }}
+          </li>
+        {% empty %}
+          <div style="opacity:.75;">Нет проблемных событий.</div>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <div class="page-card" style="margin:0;">
+      <h3 style="margin:0 0 10px 0;">Подозрительные цены (outliers)</h3>
+      <ol style="margin:0; padding-left:18px;">
+        {% for e in price_alerts %}
+          <li style="margin-bottom:6px;">
+            <b>{{ e.title }}</b> — {{ e.price }}
+          </li>
+        {% empty %}
+          <div style="opacity:.75;">Нет аномалий.</div>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+
+  <!-- EXISTING TABLES -->
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px;">
     <div class="page-card" style="margin:0;">
       <h3 style="margin:0 0 10px 0;">Продажи по событиям (лидерборд)</h3>
@@ -103,6 +276,7 @@
             <th style="padding:8px 6px;">Пользователь</th>
             <th style="padding:8px 6px;">Событие</th>
             <th style="padding:8px 6px;">Цена</th>
+            <th style="padding:8px 6px;">Статус</th>
           </tr>
         </thead>
         <tbody>
@@ -112,9 +286,10 @@
               <td style="padding:8px 6px;">{{ t.user.email }} / {{ t.user.phone_number }}</td>
               <td style="padding:8px 6px;">{{ t.event.title }}</td>
               <td style="padding:8px 6px;">{{ t.price }}</td>
+              <td style="padding:8px 6px;">{{ t.get_status_display }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="4" style="padding:10px 6px; opacity:.75;">Покупок ещё нет.</td></tr>
+            <tr><td colspan="5" style="padding:10px 6px; opacity:.75;">Покупок ещё нет.</td></tr>
           {% endfor %}
         </tbody>
       </table>

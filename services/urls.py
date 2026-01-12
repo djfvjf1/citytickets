@@ -20,4 +20,12 @@ urlpatterns = [
     path('cart/remove/<int:item_id>/', views.cart_remove, name='cart_remove'),
 
     path('analytics/', views.admin_analytics, name='admin-analytics'),
+    path('analytics/export/csv/', views.admin_analytics_export_csv, name='admin_analytics_export_csv'),
+
+    # мгновенный возврат
+    path('tickets/<int:ticket_id>/refund-now/', views.refund_now, name='refund_now'),
+
+    # верификация QR
+    path('tickets/verify/<int:ticket_id>/', views.verify_ticket, name='verify_ticket')
+
 ]

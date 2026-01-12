@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Отмена события{% endblock %}
+{% block container %}
+<div class="page-card" style="max-width:800px;">
+  <h2 class="page-title">Отменить событие</h2>
+
+  <p><strong>{{ event.title }}</strong></p>
+  <p style="opacity:.8;">
+    После отмены всем купившим билеты будет автоматически создан запрос на возврат.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit"
+            style="padding:10px 14px; border:none; border-radius:8px;
+                   background:#dc3545; color:#fff; cursor:pointer;">
+      Отменить событие
+    </button>
+  </form>
+</div>
+{% endblock %}
