@@ -46,6 +46,8 @@ from django.views.decorators.http import require_http_methods
 
 from .utils import generate_qr_png
 
+from django.core import signing
+
 logger = logging.getLogger(__name__)
 
 REFUND_LOCK_HOURS = 2  # запрет возврата за N часов до начала
@@ -101,7 +103,10 @@ def build_ticket_pdf(ticket):
     # QR-код, если есть
     if ticket.qr_code:
         try:
-            qr = ImageReader(ticket.qr_code.path)
+            verify_url = _ticket_verify_url(ticket.id)
+            qr_bytes = generate_qr_png(verify_url)
+            qr = ImageReader(BytesIO(qr_bytes))
+    
             qr_size = 200
             c.drawImage(
                 qr,
@@ -111,7 +116,6 @@ def build_ticket_pdf(ticket):
                 qr_size
             )
         except Exception:
-            # Если вдруг не прочитается файл — просто пропустим
             pass
 
     c.showPage()
@@ -771,46 +775,6 @@ def refund_now(request, ticket_id):
     return redirect('my_tickets')
 
 
-@require_http_methods(["GET", "POST"])
-def verify_ticket(request, ticket_id):
-    ticket = get_object_or_404(
-        Ticket.objects.select_related('event', 'user'),
-        pk=ticket_id
-    )
-
-    # Логика валидности:
-    # - билет должен быть paid
-    # - не использован
-    # - событие не прошло
-    # - билет не возвращён
-    now = timezone.now()
-
-    valid = (
-        ticket.status == 'paid'
-        and ticket.used_at is None
-        and ticket.event.datetime_passing > now
-    )
-
-    # Если staff нажимает "Использовать билет" — помечаем used
-    can_mark_used = request.user.is_authenticated and request.user.is_staff
-
-    if request.method == "POST":
-        if not can_mark_used:
-            return HttpResponse("Forbidden", status=403)
-
-        if valid:
-            ticket.status = 'used'
-            ticket.used_at = now
-            ticket.save(update_fields=['status', 'used_at'])
-            valid = False  # после использования уже не валиден как "не использован"
-
-    return render(request, 'services/verify_ticket.html', {
-        'ticket': ticket,
-        'valid': valid,
-        'can_mark_used': can_mark_used,
-        'now': now,
-    })
-
 
 def _ticket_verify_url(ticket_id: int) -> str:
     # подпись, чтобы нельзя было просто подобрать /verify/1/ без защиты
@@ -822,8 +786,8 @@ def _ticket_verify_url(ticket_id: int) -> str:
 @login_required
 def ticket_qr_png(request, ticket_id):
     """
-    QR-картинка на лету (без /media).
-    Внутри QR — ссылка на verify.
+    PNG QR на лету (без /media).
+    QR содержит ссылку на verify с токеном.
     """
     ticket = get_object_or_404(Ticket, pk=ticket_id, user=request.user)
 
@@ -833,58 +797,63 @@ def ticket_qr_png(request, ticket_id):
     return HttpResponse(png_bytes, content_type="image/png")
 
 
+@require_http_methods(["GET", "POST"])
 def verify_ticket(request, ticket_id, token):
-    """
-    Публичная страница проверки билета (по QR).
-    """
-    # 1) проверяем подпись
+    # 1) проверяем подпись токена
     try:
-        payload = signing.loads(token, max_age=60 * 60 * 24 * 365)  # год
+        payload = signing.loads(token, max_age=60 * 60 * 24 * 365)  # 1 год
         if int(payload.get("ticket_id")) != int(ticket_id):
             raise signing.BadSignature("ticket id mismatch")
     except Exception:
         return render(request, "services/verify_ticket.html", {
             "ok": False,
-            "reason": "QR-код недействителен (подпись неверная).",
+            "reason": "QR-код недействителен (ошибка подписи).",
             "ticket": None,
+            "can_mark_used": False,
         })
 
-    # 2) ищем билет
+    # 2) достаём билет
     ticket = get_object_or_404(Ticket.objects.select_related("event", "user"), pk=ticket_id)
+    now = timezone.now()
 
-    # 3) статус/валидность
+    # 3) проверяем валидность
+    ok = True
+    reason = "Билет действителен ✅"
+
     if ticket.status == "refunded":
-        return render(request, "services/verify_ticket.html", {
-            "ok": False,
-            "reason": "Билет возвращён (недействителен).",
-            "ticket": ticket,
-        })
+        ok = False
+        reason = "Билет возвращён (недействителен)."
 
-    if ticket.status == "cancelled":
-        return render(request, "services/verify_ticket.html", {
-            "ok": False,
-            "reason": "Событие отменено (билет недействителен).",
-            "ticket": ticket,
-        })
+    elif ticket.status == "cancelled":
+        ok = False
+        reason = "Билет отменён."
 
-    if ticket.used_at or ticket.status == "used":
-        return render(request, "services/verify_ticket.html", {
-            "ok": False,
-            "reason": "Билет уже использован.",
-            "ticket": ticket,
-        })
+    elif ticket.used_at or ticket.status == "used":
+        ok = False
+        reason = "Билет уже использован."
 
-    # если событие уже прошло — по желанию тоже можно считать невалидным
-    if ticket.event.datetime_passing <= timezone.now():
-        return render(request, "services/verify_ticket.html", {
-            "ok": False,
-            "reason": "Событие уже прошло.",
-            "ticket": ticket,
-        })
+    elif ticket.event.datetime_passing <= now:
+        ok = False
+        reason = "Событие уже прошло."
 
-    # ✅ валиден
+    # 4) если staff нажимает POST — помечаем used (только если ok)
+    can_mark_used = request.user.is_authenticated and request.user.is_staff
+
+    if request.method == "POST":
+        if not can_mark_used:
+            return HttpResponse("Forbidden", status=403)
+
+        if ok:
+            ticket.status = "used"
+            ticket.used_at = now
+            ticket.save(update_fields=["status", "used_at"])
+            ok = False
+            reason = "Билет отмечен как использованный ✅"
+
     return render(request, "services/verify_ticket.html", {
-        "ok": True,
-        "reason": "Билет действителен ✅",
         "ticket": ticket,
+        "ok": ok,
+        "reason": reason,
+        "can_mark_used": can_mark_used,
+        "now": now,
     })

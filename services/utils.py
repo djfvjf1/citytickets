@@ -28,4 +28,4 @@ def generate_qr_code(data: str) -> ContentFile:
     Нужен, чтобы твой Ticket.save() (который сохраняет qr_code в ImageField)
     не ломался.
     """
-    return ContentFile(generate_qr_png(data))
+    return ContentFile(generate_qr_png(data), name="qr.png")

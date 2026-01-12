@@ -164,7 +164,7 @@
 
             <div class="ticket-footer">
               {% if ticket.qr_code %}
-                <img src="{% url 'ticket_qr_png' ticket.id %}" alt="QR Code">
+                <img src="{% url 'ticket_qr_png' ticket.id %}" alt="QR Code" style="max-width:120px;">
               {% else %}
                 <p class="muted">QR-код пока не сформирован</p>
               {% endif %}
