@@ -26,6 +26,10 @@ urlpatterns = [
     path('tickets/<int:ticket_id>/refund-now/', views.refund_now, name='refund_now'),
 
     # верификация QR
-    path('tickets/verify/<int:ticket_id>/', views.verify_ticket, name='verify_ticket')
+    path('tickets/verify/<int:ticket_id>/', views.verify_ticket, name='verify_ticket'),
+
+    path("tickets/<int:ticket_id>/qr.png/", views.ticket_qr_png, name="ticket_qr_png"),
+    path("tickets/verify/<int:ticket_id>/<str:token>/", views.verify_ticket, name="verify_ticket"),
+
 
 ]

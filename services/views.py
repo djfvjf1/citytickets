@@ -44,7 +44,7 @@ from django.core.mail import send_mail
 
 from django.views.decorators.http import require_http_methods
 
-
+from .utils import generate_qr_png
 
 logger = logging.getLogger(__name__)
 
@@ -809,4 +809,82 @@ def verify_ticket(request, ticket_id):
         'valid': valid,
         'can_mark_used': can_mark_used,
         'now': now,
+    })
+
+
+def _ticket_verify_url(ticket_id: int) -> str:
+    # подпись, чтобы нельзя было просто подобрать /verify/1/ без защиты
+    token = signing.dumps({"ticket_id": ticket_id})
+    base = getattr(settings, "SITE_URL", "").rstrip("/")
+    return f"{base}/tickets/verify/{ticket_id}/{token}/"
+
+
+@login_required
+def ticket_qr_png(request, ticket_id):
+    """
+    QR-картинка на лету (без /media).
+    Внутри QR — ссылка на verify.
+    """
+    ticket = get_object_or_404(Ticket, pk=ticket_id, user=request.user)
+
+    url = _ticket_verify_url(ticket.id)
+    png_bytes = generate_qr_png(url)
+
+    return HttpResponse(png_bytes, content_type="image/png")
+
+
+def verify_ticket(request, ticket_id, token):
+    """
+    Публичная страница проверки билета (по QR).
+    """
+    # 1) проверяем подпись
+    try:
+        payload = signing.loads(token, max_age=60 * 60 * 24 * 365)  # год
+        if int(payload.get("ticket_id")) != int(ticket_id):
+            raise signing.BadSignature("ticket id mismatch")
+    except Exception:
+        return render(request, "services/verify_ticket.html", {
+            "ok": False,
+            "reason": "QR-код недействителен (подпись неверная).",
+            "ticket": None,
+        })
+
+    # 2) ищем билет
+    ticket = get_object_or_404(Ticket.objects.select_related("event", "user"), pk=ticket_id)
+
+    # 3) статус/валидность
+    if ticket.status == "refunded":
+        return render(request, "services/verify_ticket.html", {
+            "ok": False,
+            "reason": "Билет возвращён (недействителен).",
+            "ticket": ticket,
+        })
+
+    if ticket.status == "cancelled":
+        return render(request, "services/verify_ticket.html", {
+            "ok": False,
+            "reason": "Событие отменено (билет недействителен).",
+            "ticket": ticket,
+        })
+
+    if ticket.used_at or ticket.status == "used":
+        return render(request, "services/verify_ticket.html", {
+            "ok": False,
+            "reason": "Билет уже использован.",
+            "ticket": ticket,
+        })
+
+    # если событие уже прошло — по желанию тоже можно считать невалидным
+    if ticket.event.datetime_passing <= timezone.now():
+        return render(request, "services/verify_ticket.html", {
+            "ok": False,
+            "reason": "Событие уже прошло.",
+            "ticket": ticket,
+        })
+
+    # ✅ валиден
+    return render(request, "services/verify_ticket.html", {
+        "ok": True,
+        "reason": "Билет действителен ✅",
+        "ticket": ticket,
     })
