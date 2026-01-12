@@ -2,6 +2,7 @@ import qrcode
 from io import BytesIO
 from django.core.files import File
 from PIL import Image
+from django.core.files.base import ContentFile
 
 
 def generate_qr_png(data: str) -> bytes:
@@ -18,3 +19,13 @@ def generate_qr_png(data: str) -> bytes:
     buf = BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+# ✅ ВАЖНО: оставляем старую функцию, чтобы models.py не падал
+def generate_qr_code(data: str) -> ContentFile:
+    """
+    СТАРЫЙ интерфейс: возвращает ContentFile для ImageField.save().
+    Нужен, чтобы твой Ticket.save() (который сохраняет qr_code в ImageField)
+    не ломался.
+    """
+    return ContentFile(generate_qr_png(data))
