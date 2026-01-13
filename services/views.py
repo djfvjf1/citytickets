@@ -220,6 +220,18 @@ class PaymentView(LoginRequiredMixin, View):
 
     def get(self, request):
         event = self._get_event(request)
+        now = timezone.now()
+        if event.datetime_passing <= now:
+            return render(
+            request,
+            'services/payment.html',
+            {
+                'form': PaymentForm(request.POST or None),
+                'total_price': event.price,
+                'event': event,
+                'error': 'Нельзя купить билет на событие, которое уже прошло',
+            }
+        )
         if not event:
             return redirect('events')
 
@@ -292,7 +304,7 @@ class PaymentView(LoginRequiredMixin, View):
             email = EmailMultiAlternatives(
                 subject,
                 text_content,
-                'no-reply@citytickets.kz',
+                settings.DEFAULT_FROM_EMAIL,
                 [user.email],
             )
             email.attach_alternative(html_content, "text/html")

@@ -5,6 +5,8 @@ from django.utils import timezone
 from accounts.models import User
 from services.utils import generate_qr_code
 from django.conf import settings 
+from django.core import signing
+
 
 
 class Location(models.Model):
@@ -98,27 +100,21 @@ class Ticket(models.Model):
     def __str__(self):
         return f'Билет на "{self.event.title}" для {self.user}'
 
-    def save(self, *args, **kwargs):
-        """
-        1) Если билет новый – сначала обычный save (INSERT), чтобы получить id.
-        2) Потом генерим QR и сохраняем ТОЛЬКО qr_code вторым save'ом (UPDATE).
-        3) Если билет уже существующий – просто обычный save.
-        """
-        is_new = self.pk is None
 
-        # первый save — создаём запись
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
         super().save(*args, **kwargs)
 
-        # только для новых билетов и только если ещё нет qr_code
-        
         if is_new and not self.qr_code:
-            verify_url = f"{settings.SITE_URL}/tickets/verify/{self.pk}/"
+            base = getattr(settings, "SITE_URL", "").rstrip("/")
+            token = signing.dumps({"ticket_id": self.pk})
+            verify_url = f"{base}/tickets/verify/{self.pk}/{token}/"
+
             img = generate_qr_code(verify_url)
-            filename = f'qr_ticket_{self.pk}.png'
+            filename = f"qr_ticket_{self.pk}.png"
 
             self.qr_code.save(filename, img, save=False)
             super(Ticket, self).save(update_fields=['qr_code'])
-
 
 class Favorite(models.Model):
     user = models.ForeignKey( # бумажка для начальника user
