@@ -154,6 +154,8 @@ EMAIL_PORT = 587
 # от кого будут уходить письма
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+EMAIL_TIMEOUT = 10
+
 
 # ========= CORS / CSRF (оставляем как у тебя) =========
 

@@ -48,6 +48,8 @@ from .utils import generate_qr_png
 
 from django.core import signing
 
+from django.core.mail import get_connection
+
 logger = logging.getLogger(__name__)
 
 REFUND_LOCK_HOURS = 2  # запрет возврата за N часов до начала
@@ -312,6 +314,8 @@ class PaymentView(LoginRequiredMixin, View):
                     logger.exception(e)
 
             try:
+                connection = get_connection(timeout=10)
+                email.connection = connection
                 email.send(fail_silently=False)
                 print(f'EMAIL SENT for ticket {ticket.id} to {user.email}')
             except Exception as e:
