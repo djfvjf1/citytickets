@@ -52,6 +52,8 @@ from django.core.mail import get_connection
 
 logger = logging.getLogger(__name__)
 
+QR_SALT = "citytickets-qr-v1"   # должна совпадать с models.py
+
 REFUND_LOCK_HOURS = 2  # запрет возврата за N часов до начала
 
 
@@ -201,16 +203,8 @@ def event_details(request, event_id):
 
 
 # ===== Оплата =====
-class PaymentView(LoginRequiredMixin, View):
-    """
-    Фейковая оплата:
-    - валидируем поля карты,
-    - создаём Ticket (не больше одного билета на событие для пользователя),
-    - отправляем письмо с билетом и QR (+ PDF),
-    - редиректим в "Мои билеты".
-    """
-
-    login_url = 'home'  # куда кидать неавторизованных
+class PaymentView(View):
+    login_url = 'home'
 
     def _get_event(self, request):
         event_id = request.GET.get('event')
@@ -220,122 +214,108 @@ class PaymentView(LoginRequiredMixin, View):
 
     def get(self, request):
         event = self._get_event(request)
-        now = timezone.now()
-        if event.datetime_passing <= now:
-            return render(
-            request,
-            'services/payment.html',
-            {
-                'form': PaymentForm(request.POST or None),
-                'total_price': event.price,
-                'event': event,
-                'error': 'Нельзя купить билет на событие, которое уже прошло',
-            }
-        )
         if not event:
             return redirect('events')
 
-        form = PaymentForm()
-        return render(
-            request,
-            'services/payment.html',
-            {
-                'form': form,
+        # ✅ запрет покупки прошедшего
+        if event.datetime_passing <= timezone.now():
+            return render(request, 'services/payment.html', {
+                'form': PaymentForm(),
                 'total_price': event.price,
                 'event': event,
-            }
-        )
+                'error': 'Нельзя купить билет на событие, которое уже прошло',
+            })
+
+        return render(request, 'services/payment.html', {
+            'form': PaymentForm(),
+            'total_price': event.price,
+            'event': event,
+        })
 
     def post(self, request):
         event = self._get_event(request)
         if not event:
             return redirect('events')
 
+        # ✅ запрет покупки прошедшего (обязательно в POST тоже)
+        if event.datetime_passing <= timezone.now():
+            return render(request, 'services/payment.html', {
+                'form': PaymentForm(request.POST or None),
+                'total_price': event.price,
+                'event': event,
+                'error': 'Нельзя купить билет на событие, которое уже прошло',
+            })
+
         form = PaymentForm(request.POST)
         if not form.is_valid():
-            return render(
-                request,
-                'services/payment.html',
-                {
-                    'form': form,
-                    'total_price': event.price,
-                    'event': event,
-                    'error': 'Проверьте данные карты',
-                }
-            )
+            return render(request, 'services/payment.html', {
+                'form': form,
+                'total_price': event.price,
+                'event': event,
+                'error': 'Проверьте данные карты',
+            })
 
         user = request.user
 
-        # 🔒 Анти-дубль: защита от многократных кликов по кнопке
-        now_ts = timezone.now().timestamp()
-        session_key = f"last_payment_event_{event.id}"
-        last_ts = request.session.get(session_key)
-
-        # если уже был POST на это событие за последние 5 секунд –
-        # считаем, что это повторный клик и просто уводим в "Мои билеты"
-        if last_ts and now_ts - last_ts < 5:
-            return redirect('my_tickets')
-
-        # запоминаем время оплаты для этого события
-        request.session[session_key] = now_ts
-
-        # ✅ создаём билет (один раз на этот POST)
+        # ✅ создаём билет
         ticket = Ticket.objects.create(
             event=event,
             user=user,
             price=event.price,
         )
 
+        # на всякий: QR гарантируем (если где-то save не сработал)
+        try:
+            if not ticket.qr_code:
+                ticket.ensure_qr(force=False)
+                ticket.save(update_fields=["qr_code"])
+        except Exception:
+            logger.exception("QR generation failed")
+
         # ===== письмо с билетом =====
         if user.email:
             subject = f'Ваш билет №{ticket.id} — {event.title}'
             purchase_time = timezone.now()
 
-            html_content = render_to_string(
-                'services/ticket-email.html',
-                {
-                    'tickets': [ticket],
-                    'user': user,
-                    'purchase_time': purchase_time,
-                }
-            )
+            html_content = render_to_string('services/ticket-email.html', {
+                'tickets': [ticket],
+                'user': user,
+                'purchase_time': purchase_time,
+            })
             text_content = strip_tags(html_content)
 
             email = EmailMultiAlternatives(
-                subject,
-                text_content,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
             )
             email.attach_alternative(html_content, "text/html")
 
-            try:
-                pdf_bytes = build_ticket_pdf(ticket)
-                email.attach(
-                    f"ticket_{ticket.id}.pdf",
-                    pdf_bytes,
-                    "application/pdf"
-                )
-            except Exception as e:
-                logger.exception(e)
-
+            # ✅ QR прикрепляем БЕЗ .path (на Render часто ломает)
             if ticket.qr_code:
                 try:
-                    email.attach_file(ticket.qr_code.path)
-                except Exception as e:
-                    logger.exception(e)
+                    ticket.qr_code.open("rb")
+                    email.attach(
+                        f"qr_ticket_{ticket.id}.png",
+                        ticket.qr_code.read(),
+                        "image/png"
+                    )
+                    ticket.qr_code.close()
+                except Exception:
+                    logger.exception("Attach QR failed")
 
             try:
-                connection = get_connection(timeout=10)
+                # timeout берём из settings если есть
+                connection = get_connection(timeout=getattr(settings, "EMAIL_TIMEOUT", 10))
                 email.connection = connection
                 email.send(fail_silently=False)
-                print(f'EMAIL SENT for ticket {ticket.id} to {user.email}')
+                print(f'EMAIL SENT ticket {ticket.id} -> {user.email}')
             except Exception as e:
-                print(f'EMAIL ERROR for ticket {ticket.id}: {e}')
-                logger.exception(e)
+                print(f'EMAIL ERROR ticket {ticket.id}: {e}')
+                logger.exception("Email send failed")
 
         return redirect('my_tickets')
-
 
 
 # ===== Мои билеты =====
@@ -793,9 +773,8 @@ def refund_now(request, ticket_id):
 
 
 def _ticket_verify_url(ticket_id: int) -> str:
-    # подпись, чтобы нельзя было просто подобрать /verify/1/ без защиты
-    token = signing.dumps({"ticket_id": ticket_id})
     base = getattr(settings, "SITE_URL", "").rstrip("/")
+    token = signing.dumps({"ticket_id": ticket_id}, salt=QR_SALT)
     return f"{base}/tickets/verify/{ticket_id}/{token}/"
 
 
@@ -817,7 +796,11 @@ def ticket_qr_png(request, ticket_id):
 def verify_ticket(request, ticket_id, token):
     # 1) проверяем подпись токена
     try:
-        payload = signing.loads(token, max_age=60 * 60 * 24 * 365)  # 1 год
+        payload = signing.loads(
+            token,
+            salt=QR_SALT,
+            max_age=60 * 60 * 24 * 365  # 1 год
+        )
         if int(payload.get("ticket_id")) != int(ticket_id):
             raise signing.BadSignature("ticket id mismatch")
     except Exception:
@@ -839,15 +822,12 @@ def verify_ticket(request, ticket_id, token):
     if ticket.status == "refunded":
         ok = False
         reason = "Билет возвращён (недействителен)."
-
     elif ticket.status == "cancelled":
         ok = False
         reason = "Билет отменён."
-
     elif ticket.used_at or ticket.status == "used":
         ok = False
         reason = "Билет уже использован."
-
     elif ticket.event.datetime_passing <= now:
         ok = False
         reason = "Событие уже прошло."

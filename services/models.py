@@ -73,6 +73,10 @@ class Event(models.Model):
     def __str__(self):
         return self.title
 
+
+QR_SALT = "citytickets-qr-v1" 
+
+
 # здесь находится генерация
 class Ticket(models.Model):
     STATUS_CHOICES = [
@@ -83,7 +87,7 @@ class Ticket(models.Model):
         ('used', 'Использован'),
     ]
 
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    event = models.ForeignKey("Event", on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     price = models.IntegerField()
     qr_code = models.ImageField(upload_to='qr_codes', blank=True, null=True)
@@ -100,22 +104,37 @@ class Ticket(models.Model):
     def __str__(self):
         return f'Билет на "{self.event.title}" для {self.user}'
 
+    @staticmethod
+    def build_verify_url(ticket_id: int) -> str:
+        base = getattr(settings, "SITE_URL", "").rstrip("/")
+        token = signing.dumps({"ticket_id": ticket_id}, salt=QR_SALT)
+        return f"{base}/tickets/verify/{ticket_id}/{token}/"
+
+    def ensure_qr(self, force: bool = False) -> None:
+        """
+        Генерит QR если его нет.
+        force=True пересоздаст даже если уже есть (для фикса старых билетов).
+        """
+        if not force and self.qr_code:
+            return
+
+        verify_url = self.build_verify_url(self.pk)
+        img = generate_qr_code(verify_url)
+        filename = f"qr_ticket_{self.pk}.png"
+
+        # save=False чтобы не уйти в рекурсию save()
+        self.qr_code.save(filename, img, save=False)
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
 
+        # QR только после того как есть pk
         if is_new and not self.qr_code:
-            base = getattr(settings, "SITE_URL", "").rstrip("/")
-            token = signing.dumps({"ticket_id": self.pk})
-            verify_url = f"{base}/tickets/verify/{self.pk}/{token}/"
+            self.ensure_qr(force=False)
+            super().save(update_fields=["qr_code"])
 
-            img = generate_qr_code(verify_url)
-            filename = f"qr_ticket_{self.pk}.png"
-
-            self.qr_code.save(filename, img, save=False)
-            super(Ticket, self).save(update_fields=['qr_code'])
-
+            
 class Favorite(models.Model):
     user = models.ForeignKey( # бумажка для начальника user
         User,
